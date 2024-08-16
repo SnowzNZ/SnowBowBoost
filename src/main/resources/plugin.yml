@@ -2,3 +2,12 @@ name: SnowBowBoost
 version: '1.0-SNAPSHOT'
 main: dev.snowz.snowbowboost.SnowBowBoost
 api-version: '1.21'
+commands:
+  sbbreload:
+    description: Reloads the config
+    usage: /sbbreload
+    permission: snowbowboost.reload
+permissions:
+  snowbowboost.reload:
+    description: Allows the player to reload the config
+    default: op

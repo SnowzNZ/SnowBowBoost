@@ -1,36 +1,45 @@
 package dev.snowz.snowbowboost;
 
 import org.bukkit.GameMode;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
-public class Arrow {
-    private final SnowBowBoost plugin;
+import java.util.Objects;
 
-    private final org.bukkit.entity.Arrow arrow;
+public class CustomArrow {
 
+    private static final SnowBowBoost plugin = SnowBowBoost.getInstance();
+
+    private final ItemStack bow;
+    private final Arrow arrow;
     private final Player shooter;
 
     private boolean leftHitbox;
 
-    public Arrow(SnowBowBoost plugin, org.bukkit.entity.Arrow arrow) {
-        this.plugin = plugin;
+    public CustomArrow(ItemStack bow, Arrow arrow) {
+        this.bow = bow;
         this.arrow = arrow;
         this.shooter = (Player) arrow.getShooter();
-        this.leftHitbox = false;
     }
 
-    public org.bukkit.entity.Arrow getArrow() {
-        return this.arrow;
+    public ItemStack getBow() {
+        return bow;
+    }
+
+    public Arrow getArrow() {
+        return arrow;
     }
 
     public Player getShooter() {
-        return this.shooter;
+        return shooter;
     }
 
-    public boolean getLeftHitbox() {
-        return this.leftHitbox;
+    public boolean hasLeftHitbox() {
+        return leftHitbox;
     }
 
     public void setLeftHitbox(boolean leftHitbox) {
@@ -38,65 +47,72 @@ public class Arrow {
     }
 
     public Vector getPunchVelocity() {
-        double horizontalVelocity = this.plugin.getConfig().getDouble("velocity-horizontal");
-        double verticalVelocity = this.plugin.getConfig().getDouble("velocity-vertical");
-        int punch = this.arrow.getKnockbackStrength();
-        horizontalVelocity *= (punch + 1);
-        Vector horizontalVelocityScale = new Vector(horizontalVelocity, 0.0D, horizontalVelocity);
-        Vector verticalVelocityScale = new Vector(0.0D, verticalVelocity, 0.0D);
-        Vector arrowDirection = this.arrow.getVelocity().clone().normalize();
-        Vector newVelocity = arrowDirection.multiply(horizontalVelocityScale).add(verticalVelocityScale);
-        newVelocity = newVelocity.add(this.shooter.getVelocity());
+        double horizontalVelocity = plugin.getConfig().getDouble("velocity-horizontal");
+        double verticalVelocity = plugin.getConfig().getDouble("velocity-vertical");
+
+        int punchLevel = bow.getEnchantmentLevel(Enchantment.PUNCH);
+        horizontalVelocity *= (punchLevel + 1);
+
+        Vector newVelocity = calculateVelocity(horizontalVelocity, verticalVelocity);
+        newVelocity.add(shooter.getVelocity());
+
         return newVelocity;
     }
 
+    private Vector calculateVelocity(double horizontalVelocity, double verticalVelocity) {
+        Vector arrowDirection = arrow.getVelocity().clone().normalize();
+        Vector horizontalVelocityScale = new Vector(horizontalVelocity, 0.0D, horizontalVelocity);
+        Vector verticalVelocityScale = new Vector(0.0D, verticalVelocity, 0.0D);
+        return arrowDirection.multiply(horizontalVelocityScale).add(verticalVelocityScale);
+    }
+
     public boolean canBoost() {
-        if (!this.shooter.getWorld().getName().equals("clanffa"))
-            return false;
-        if (this.shooter.getGameMode() == GameMode.CREATIVE || this.shooter.getGameMode() == GameMode.SPECTATOR)
-            return false;
-        if (this.shooter.getNoDamageTicks() > 0)
-            return false;
-        if (this.shooter.getVelocity().length() == 0.0D)
-            return false;
-        if (!overlapsEnterHitbox())
-            return false;
-        if (!getLeftHitbox())
-            return false;
-        if (!isAliveLongEnough())
-            return false;
-        return true;
+        return isEnabledWorld() && isShooterInSurvival() && isArrowEligible() && hasLeftHitbox() && isArrowAliveLongEnough();
+    }
+
+    private boolean isEnabledWorld() {
+        return Objects.requireNonNull(plugin.getConfig().getList("enabled-worlds")).contains(shooter.getWorld().getName());
+    }
+
+    private boolean isShooterInSurvival() {
+        return shooter.getGameMode() != GameMode.CREATIVE && shooter.getGameMode() != GameMode.SPECTATOR;
+    }
+
+    private boolean isArrowEligible() {
+        return shooter.getNoDamageTicks() <= 0 && shooter.getVelocity().length() > 0.0D && overlapsEnterHitbox();
     }
 
     public boolean outsideLeaveHitbox() {
-        double leaveHitboxReduction = this.plugin.getConfig().getDouble("leave-hitbox-reduction");
-        BoundingBox leaveHitBox = this.shooter.getBoundingBox().clone().expand(0.1D - leaveHitboxReduction);
-        BoundingBox arrowBox = this.arrow.getBoundingBox();
-        return !arrowBox.overlaps(leaveHitBox);
+        BoundingBox leaveHitBox = shooter.getBoundingBox().clone().expand(getLeaveHitboxExpansion());
+        return !arrow.getBoundingBox().overlaps(leaveHitBox);
     }
 
     public boolean overlapsEnterHitbox() {
-        double enterHitboxExpansion = this.plugin.getConfig().getDouble("enter-hitbox-expansion");
-        BoundingBox enterHitBox = this.shooter.getBoundingBox().clone().expand(0.1D + enterHitboxExpansion);
-        BoundingBox arrowBox = this.arrow.getBoundingBox();
-        return arrowBox.overlaps(enterHitBox);
+        BoundingBox enterHitBox = shooter.getBoundingBox().clone().expand(getEnterHitboxExpansion());
+        return arrow.getBoundingBox().overlaps(enterHitBox);
     }
 
-    public boolean isAliveLongEnough() {
-        double minTicks = this.plugin.getConfig().getInt("min-life-ticks");
-        double speed = this.arrow.getVelocity().length();
+    private double getLeaveHitboxExpansion() {
+        return 0.1D - plugin.getConfig().getDouble("leave-hitbox-reduction");
+    }
+
+    private double getEnterHitboxExpansion() {
+        return 0.1D + plugin.getConfig().getDouble("enter-hitbox-expansion");
+    }
+
+    public boolean isArrowAliveLongEnough() {
+        int minTicks = plugin.getConfig().getInt("min-life-ticks");
+        double speedScale = calculateSpeedScale();
+        return arrow.getTicksLived() >= minTicks * speedScale;
+    }
+
+    private double calculateSpeedScale() {
+        double speed = arrow.getVelocity().length();
         double maxSpeed = 3.0D;
-        double scale = 1.0D - speed / maxSpeed;
-        minTicks *= scale;
-        return (this.arrow.getTicksLived() >= minTicks);
+        return 1.0D - speed / maxSpeed;
     }
 
     public boolean isValid() {
-        return (this.shooter != null && this.arrow != null && this.arrow
-
-                .isValid() && this.arrow
-                .getTicksLived() < 15 &&
-                !this.arrow.isInBlock() && this.shooter
-                .isValid());
+        return shooter != null && arrow != null && arrow.isValid() && arrow.getTicksLived() < 15 && !arrow.isInBlock() && shooter.isValid();
     }
 }

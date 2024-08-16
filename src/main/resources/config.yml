@@ -1,0 +1,31 @@
+# What worlds should bow boosting be enabled in?
+enabled-worlds:
+  - world
+
+# Disabling this will make arrows shoot perfectly straight
+arrow-randomization: false
+
+# Should flame bows set the shooter on fire?
+flame: true
+
+# What should the arrows velocity be multiplied by?
+velocity-horizontal: 0.5
+velocity-vertical: 0.125
+
+# How long should the arrow be alive before boost (in ticks)?
+# 0   -> More likely to hit
+# 3   -> Default
+# 5+  -> Less likely to hit
+min-life-ticks: 3
+
+# Reduce the hitbox that the arrow must escape before hitting the player?
+# 0.5   -> More likely to hit
+# 0.1   -> Default
+# -0.4  -> Impossible to hit
+leave-hitbox-reduction: 0.1
+
+# Expand the hitbox the arrow must re-enter to boost the player?
+# 3.0   -> Almost always hit, even with full power
+# 0.0   -> Default
+# -0.4  -> Impossible to hit
+enter-hitbox-expansion: 0.0
