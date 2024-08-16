@@ -60,7 +60,7 @@ public class BowShoot implements Listener {
                 if (random.nextFloat() < calculateDamageChance(unbreakingLevel)) {
                     Damageable damageable = (Damageable) armor.getItemMeta();
                     int armorDamage = damageable.getDamage();
-                    damageable.setDamage(armorDamage <= 0 ? armorDamage - 1 : 0);
+                    damageable.setDamage(armorDamage <= 0 ? 0 : armorDamage - 1);
                 }
             }
         }
