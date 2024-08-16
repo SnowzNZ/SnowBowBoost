@@ -59,7 +59,8 @@ public class BowShoot implements Listener {
                 int unbreakingLevel = armor.getEnchantmentLevel(Enchantment.UNBREAKING);
                 if (random.nextFloat() < calculateDamageChance(unbreakingLevel)) {
                     Damageable damageable = (Damageable) armor.getItemMeta();
-                    damageable.setDamage(damageable.getDamage() - 1);
+                    int armorDamage = damageable.getDamage();
+                    damageable.setDamage(armorDamage <= 0 ? armorDamage - 1 : 0);
                 }
             }
         }
