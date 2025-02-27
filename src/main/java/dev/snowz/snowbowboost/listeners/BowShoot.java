@@ -11,7 +11,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.util.Vector;
 
 import java.util.Random;
@@ -21,15 +20,15 @@ public class BowShoot implements Listener {
     private static final SnowBowBoost plugin = SnowBowBoost.getInstance();
     private static final Random random = new Random();
 
-    public static void fakeShot(CustomArrow arrowInfo) {
-        Player player = arrowInfo.getShooter();
-        Arrow arrow = arrowInfo.getArrow();
+    public static void fakeShot(CustomArrow customArrow) {
+        Player player = customArrow.getShooter();
+        Arrow arrow = customArrow.getArrow();
 
-        if (!arrowInfo.isValid()) {
+        if (!customArrow.isValid()) {
             return;
         }
 
-        player.setVelocity(arrowInfo.getPunchVelocity());
+        player.setVelocity(customArrow.getPunchVelocity());
         applyDamage(player, arrow);
         applyArmorDamage(player);
 
@@ -53,21 +52,17 @@ public class BowShoot implements Listener {
         }
     }
 
+    // TODO: fix this shit
     private static void applyArmorDamage(Player player) {
         for (ItemStack armor : player.getInventory().getArmorContents()) {
             if (armor != null) {
                 int unbreakingLevel = armor.getEnchantmentLevel(Enchantment.UNBREAKING);
-                if (random.nextFloat() < calculateDamageChance(unbreakingLevel)) {
-                    Damageable damageable = (Damageable) armor.getItemMeta();
-                    int armorDamage = damageable.getDamage();
-                    damageable.setDamage(armorDamage <= 0 ? 0 : armorDamage - 1);
+                float damageChance = 1.0F / (unbreakingLevel + 1.0F);
+                if (random.nextFloat() < damageChance) {
+                    armor.setDurability((short) (armor.getDurability() - 1));
                 }
             }
         }
-    }
-
-    private static float calculateDamageChance(int unbreakingLevel) {
-        return 1.0F / (unbreakingLevel + 1.0F);
     }
 
     private static void applyDamage(Player player, Arrow arrow) {
